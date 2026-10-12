@@ -165,8 +165,8 @@ def feed_page():
                 else:
                     st.video(post['url'], width = 400)
             with col2:
-                st.markdown("### Caption")
-                st.write(caption)
+                st.markdown("#### Caption")
+                st.markdown(caption.replace("\n", " \n"))
 
             st.markdown("")  # Space between posts
     else:
