@@ -27,47 +27,60 @@ app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix 
 
 @app.post("/upload")
 async def upload_file(
-        file: UploadFile = File(...),
-        caption: str = Form(""),
-        # if not signed in this will prevent you to change
-        user: User = Depends(current_active_user),
-        session: AsyncSession = Depends(get_async_session)
+    file: UploadFile = File(...),
+    caption: str = Form(""),
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
 ):
     temp_file_path = None
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+        suffix = os.path.splitext(file.filename or "")[1]
+
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=suffix
+        ) as temp_file:
             temp_file_path = temp_file.name
             shutil.copyfileobj(file.file, temp_file)
 
-        upload_result = imageKit.upload_file(
-            file=open(temp_file_path, "rb"),
-            file_name=file.filename,
-            options=UploadFileRequestOptions(
+        with open(temp_file_path, "rb") as image_file:
+            upload_result = imageKit.files.upload(
+                file=image_file,
+                file_name=file.filename or "upload",
                 use_unique_file_name=True,
                 tags=["backend-upload"]
             )
+
+        post = Post(
+            user_id=user.id,
+            caption=caption,
+            url=upload_result.url,
+            file_type=(
+                "video"
+                if (file.content_type or "").startswith("video/")
+                else "image"
+            ),
+            file_name=upload_result.name
         )
 
-        if upload_result.response_metadata.http_status_code == 200:
-            post = Post(
-                user_id = user.id,
-                caption=caption,
-                url=upload_result.url,
-                file_type="video" if file.content_type.startswith("video/") else "image",
-                file_name=upload_result.name
-            )
-            session.add(post)
-            await session.commit()
-            await session.refresh(post)
-            return post
+        session.add(post)
+        await session.commit()
+        await session.refresh(post)
+
+        return post
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Upload failed: {str(e)}"
+        )
+
     finally:
         if temp_file_path and os.path.exists(temp_file_path):
             os.unlink(temp_file_path)
-        file.file.close()
+
+        await file.close()
 
 @app.get("/feed")
 async def get_feed(
@@ -117,9 +130,13 @@ async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_se
         await session.commit()
 
         return {"success": True, "message": " Post Deleted Succesfully"}
+    
+    except HTTPException:
+        raise
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid post ID")
     except Exception as e:
-        raise 
-    except Exception as e:
+        await session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
     
