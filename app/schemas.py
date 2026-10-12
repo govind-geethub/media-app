@@ -11,10 +11,10 @@ class PostResponse(BaseModel):
     content: str
 
 class UserRead(schemas.BaseUser[uuid.UUID]):
-    pass
+    username : str | None = None
 
 class UserCreate(schemas.BaseUserCreate):
-    pass
+    username : str
 
 class UserUpdate(schemas.BaseUserUpdate):
-    pass
+    username : str | None = None

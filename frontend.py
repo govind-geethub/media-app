@@ -24,6 +24,7 @@ def login_page():
 
     # Simple form with two buttons
     email = st.text_input("Email:")
+    username = st.text_input("Username:")
     password = st.text_input("Password:", type="password")
 
     if email and password:
@@ -49,17 +50,31 @@ def login_page():
                 else:
                     st.error("Invalid email or password!")
 
+
         with col2:
             if st.button("Sign Up", type="secondary", use_container_width=True):
-                # Register using FastAPI Users
-                signup_data = {"email": email, "password": password}
-                response = requests.post("http://localhost:8000/auth/register", json=signup_data)
-
-                if response.status_code == 201:
-                    st.success("Account created! Click Login now.")
+                if not username.strip():
+                    st.error("Please enter a username!")
                 else:
-                    error_detail = response.json().get("detail", "Registration failed")
-                    st.error(f"Registration failed: {error_detail}")
+                    signup_data = {
+                        "email": email,
+                        "username": username.strip(),
+                        "password": password
+                    }
+
+                    response = requests.post(
+                        "http://localhost:8000/auth/register",
+                        json=signup_data
+                    )
+
+                    if response.status_code == 201:
+                        st.success("Account created! Click Login now.")
+                    else:
+                        error_detail = response.json().get(
+                            "detail", "Registration failed"
+                        )
+                        st.error(f"Registration failed: {error_detail}")
+
     else:
         st.info("Enter your email and password above")
 
@@ -163,7 +178,7 @@ if st.session_state.user is None:
     login_page()
 else:
     # Sidebar navigation
-    st.sidebar.title(f"👋 Hi {st.session_state.user['email']}!")
+    st.sidebar.title(f"👋 Hi {st.session_state.user['username']}!")
 
     if st.sidebar.button("Logout"):
         st.session_state.user = None
