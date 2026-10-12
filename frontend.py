@@ -1,9 +1,27 @@
 import streamlit as st
 import requests
-import base64
-import urllib.parse
 
 st.set_page_config(page_title="Simple Social", layout="wide")
+
+st.markdown("""
+<style>
+/* Increase sidebar navigation text */
+[data-testid="stSidebar"] [data-testid="stRadio"] label p {
+    font-size: 20px !important;
+}
+
+/* Increase the navigation label */
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
+    font-size: 20px !important;
+}
+
+/* Increase radio button size */
+[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {
+    transform: scale(1.25);
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # Initialize session state
 if 'token' not in st.session_state:
@@ -86,45 +104,21 @@ def upload_page():
     caption = st.text_area("Caption:", placeholder="What's on your mind?")
 
     if uploaded_file and st.button("Share", type="primary"):
+        if not st.session_state.token:
+            st.error("Your session has expired. Please log in again.")
+            st.session_state.user = None
+            st.rerun()
+            return
         with st.spinner("Uploading..."):
             files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
             data = {"caption": caption}
             response = requests.post("http://localhost:8000/upload", files=files, data=data, headers=get_headers())
 
             if response.status_code == 200:
-                st.success("Posted!")
-                st.rerun()
+                st.success("✅ Uploaded successfully! Go check out the Feed page.")
             else:
-                st.error("Upload failed! status: {response.status_code}")
+                st.error(f"Upload failed! Status: {response.status_code}")
                 st.code(response.text)
-
-
-def encode_text_for_overlay(text):
-    """Encode text for ImageKit overlay - base64 then URL encode"""
-    if not text:
-        return ""
-    # Base64 encode the text
-    base64_text = base64.b64encode(text.encode('utf-8')).decode('utf-8')
-    # URL encode the result
-    return urllib.parse.quote(base64_text)
-
-
-def create_transformed_url(original_url, transformation_params, caption=None):
-    if caption:
-        encoded_caption = encode_text_for_overlay(caption)
-        # Add text overlay at bottom with semi-transparent background
-        text_overlay = f"l-text,ie-{encoded_caption},ly-N20,lx-20,fs-100,co-white,bg-000000A0,l-end"
-        transformation_params = text_overlay
-
-    if not transformation_params:
-        return original_url
-
-    parts = original_url.split("/")
-
-    imagekit_id = parts[3]
-    file_path = "/".join(parts[4:])
-    base_url = "/".join(parts[:4])
-    return f"{base_url}/tr:{transformation_params}/{file_path}"
 
 
 def feed_page():
@@ -161,12 +155,12 @@ def feed_page():
             col1, col2 = st.columns([1,1])
             with col1:
                 if post['file_type'] == 'image':
-                    st.image(post['url'], width = 400)
+                    st.image(post['url'], width = 250)
                 else:
                     st.video(post['url'], width = 400)
             with col2:
                 st.markdown("#### Caption")
-                st.markdown(caption.replace("\\n", "  \n"))
+                st.markdown(caption.replace("\n", "  \n"))
 
             st.markdown("")  # Space between posts
     else:
