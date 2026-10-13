@@ -1,4 +1,8 @@
 .venv/
-.env
+venv/
 __pycache__/
+*.py[cod]
+.env
+.streamlit/secrets.toml
 *.db
+*.db-journal
