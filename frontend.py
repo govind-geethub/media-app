@@ -1,6 +1,9 @@
 import streamlit as st
 import requests
 
+API_URL = "https://simple-social-media-b9c4.onrender.com"
+
+
 st.set_page_config(page_title="Simple Social", layout="wide")
 
 st.markdown("""
@@ -52,14 +55,14 @@ def login_page():
             if st.button("Login", type="primary", use_container_width=True):
                 # Login using FastAPI Users JWT endpoint
                 login_data = {"username": email, "password": password}
-                response = requests.post("http://localhost:8000/auth/jwt/login", data=login_data)
+                response = requests.post(f"{API_URL}/auth/jwt/login", data=login_data)
 
                 if response.status_code == 200:
                     token_data = response.json()
                     st.session_state.token = token_data["access_token"]
 
                     # Get user info
-                    user_response = requests.get("http://localhost:8000/users/me", headers=get_headers())
+                    user_response = requests.get(f"{API_URL}/users/me", headers=get_headers())
                     if user_response.status_code == 200:
                         st.session_state.user = user_response.json()
                         st.rerun()
@@ -81,7 +84,7 @@ def login_page():
                     }
 
                     response = requests.post(
-                        "http://localhost:8000/auth/register",
+                        f"{API_URL}/auth/register",
                         json=signup_data
                     )
 
@@ -112,7 +115,7 @@ def upload_page():
         with st.spinner("Uploading..."):
             files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
             data = {"caption": caption}
-            response = requests.post("http://localhost:8000/upload", files=files, data=data, headers=get_headers())
+            response = requests.post(f"{API_URL}/upload", files=files, data=data, headers=get_headers())
 
             if response.status_code == 200:
                 st.success("✅ Uploaded successfully! Go check out the Feed page.")
@@ -124,7 +127,7 @@ def upload_page():
 def feed_page():
     st.title("🏠 Feed")
 
-    response = requests.get("http://localhost:8000/feed", headers=get_headers())
+    response = requests.get(f"{API_URL}/feed", headers=get_headers())
     if response.status_code == 200:
         posts = response.json()["posts"]
 
@@ -143,7 +146,7 @@ def feed_page():
                 if post.get('is_owner', False):
                     if st.button("🗑️", key=f"delete_{post['id']}", help="Delete post"):
                         # Delete the post
-                        response = requests.delete(f"http://localhost:8000/posts/{post['id']}", headers=get_headers())
+                        response = requests.delete(f"{API_URL}/posts/{post['id']}", headers=get_headers())
                         if response.status_code == 200:
                             st.success("Post deleted!")
                             st.rerun()
