@@ -33,6 +33,8 @@ elif DATABASE_URL.startswith("postgresql://"):
         "postgresql://", "postgresql+asyncpg://", 1
     )
 
+print("DATABASE DIALECT:", DATABASE_URL.split("://")[0])
+
 class Base(DeclarativeBase):
     pass
 
